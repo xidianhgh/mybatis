@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruijie.listenevent.dao.GroupMemberMapper">
+
+    <insert id="insert" parameterType="com.ruijie.listenevent.entity.GroupMemberEntity" useGeneratedKeys="true" keyProperty="id">
+     insert into group_member (type, member, executor, date, group_name)
+      values (#{type},#{member},#{executor},#{date},#{groupName})
+    </insert>
+
+</mapper>
