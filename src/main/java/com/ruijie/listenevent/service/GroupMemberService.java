@@ -13,10 +13,15 @@ public class GroupMemberService {
     public void saveGroupMemberEvent(String type, String member, String executor, String date,String group) {
         GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
         groupMemberEntity.setType(type);
-        groupMemberEntity.setMember(member);
-        groupMemberEntity.setExecutor(executor);
-        groupMemberEntity.setDate(date);
-        groupMemberEntity.setGroupName(group);
+//        groupMemberEntity.setMember(member);
+//        groupMemberEntity.setExecutor(executor);
+//        groupMemberEntity.setDate(date);
+//        groupMemberEntity.setGroupName(group);
+        groupMemberMapper.insert(groupMemberEntity);
+    }
+    public void saveGroupMemberEvent(String type) {
+        GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
+        groupMemberEntity.setType(type);
         groupMemberMapper.insert(groupMemberEntity);
     }
 

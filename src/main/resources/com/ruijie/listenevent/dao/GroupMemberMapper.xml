@@ -3,8 +3,10 @@
 <mapper namespace="com.ruijie.listenevent.dao.GroupMemberMapper">
 
     <insert id="insert" parameterType="com.ruijie.listenevent.entity.GroupMemberEntity" useGeneratedKeys="true" keyProperty="id">
-     insert into group_member (type, member, executor, date, group_name)
-      values (#{type},#{member},#{executor},#{date},#{groupName})
-    </insert>
+     insert into group_member (type)
+      values (#{type})
+
+</insert>
+           <!--values (#{type},#{member},#{executor},#{date},#{groupName})-->
 
 </mapper>

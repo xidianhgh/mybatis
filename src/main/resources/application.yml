@@ -1,26 +1,26 @@
 server:
   port: 9999
 
-spring:
-  rabbitmq:
-    host: 192.168.160.128
-    port: 5672
-    username: guest
-    password: guest
-    virtual-host: /
+#spring:
+#  rabbitmq:
+#    host: 192.168.160.128
+#    port: 5672
+#    username: guest
+#    password: guest
+#    virtual-host: /
 
-listenEvent:
-  max:
-    batch:
-      insert:
-        num: 1000
-  listener:
-    gerrit:
-      power: true
-      queue: gerrit.b
+#listenEvent:
+#  max:
+#    batch:
+#      insert:
+#        num: 1000
+#  listener:
+#    gerrit:
+#      power: true
+#      queue: gerrit.b
 
 jdbc:
   driverClassName: com.mysql.cj.jdbc.Driver
-  url: jdbc:mysql://192.168.160.128:3306/gerrit?useUnicode=true&characterEncoding=UTF-8&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai
+  url: jdbc:mysql://192.168.113.129:3306/sonar?useUnicode=true&characterEncoding=UTF-8&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai
   username: root
   password: 123456
