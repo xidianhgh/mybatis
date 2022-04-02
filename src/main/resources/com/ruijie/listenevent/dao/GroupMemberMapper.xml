@@ -2,9 +2,21 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruijie.listenevent.dao.GroupMemberMapper">
 
-    <insert id="insert" parameterType="com.ruijie.listenevent.entity.GroupMemberEntity" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.ruijie.listenevent.entity.GroupMemberEntity" useGeneratedKeys="true"
+            keyProperty="id">
      insert into group_member (type, member, executor, date, group_name)
       values (#{type},#{member},#{executor},#{date},#{groupName})
     </insert>
+
+    <update id="createNewTable" parameterType="String">
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+          id bigint(20) NOT NULL AUTO_INCREMENT,
+          type varchar(64),
+          member varchar(64),
+          executor varchar(64),
+          date varchar(64),
+          group_name varchar(64),
+          PRIMARY KEY (id))
+    </update>
 
 </mapper>

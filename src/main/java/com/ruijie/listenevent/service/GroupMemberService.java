@@ -10,7 +10,8 @@ public class GroupMemberService {
     @Autowired
     GroupMemberMapper groupMemberMapper;
 
-    public void saveGroupMemberEvent(String type, String member, String executor, String date,String group) {
+    public void saveGroupMemberEvent(String type, String member, String executor, String date, String group) {
+        createTable();
         GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
         groupMemberEntity.setType(type);
         groupMemberEntity.setMember(member);
@@ -18,6 +19,10 @@ public class GroupMemberService {
         groupMemberEntity.setDate(date);
         groupMemberEntity.setGroupName(group);
         groupMemberMapper.insert(groupMemberEntity);
+    }
+
+    public void createTable() {
+        groupMemberMapper.createNewTable("group_member");
     }
 
 }
