@@ -59,10 +59,6 @@ public class LogActionService {
                             executorInfo.name, executorInfo.username, memberInfo.name, memberInfo.username, groupName, when),toUser.toString());
                 }
 
-                groupMemberService.saveGroupMemberEvent(method,
-                        executorInfo.name,
-                        memberInfo.name,
-                        when, groupName);
 
             }
             //project events
@@ -80,7 +76,7 @@ public class LogActionService {
 //                            executorInfo.name, executorInfo.username, memberInfo.name, memberInfo.username, groupName, when));
 //                }
 //
-//                groupMemberService.saveGroupMemberEvent(method,
+//                groupMemberService.saveData(method,
 //                        executorInfo.name,
 //                        memberInfo.name,
 //                        when, groupName);

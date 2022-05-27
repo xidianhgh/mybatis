@@ -11,17 +11,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/test")
+@RequestMapping("/groupMember")
 public class GroupMemberController {
     @Autowired
     GroupMemberService groupMemberService;
 
-    @PostMapping("/groups")
+    @PostMapping("")
     public void test(@RequestBody GroupMemberEntity req) {
 
         String currentDate = DateUtils.getCurrentTime();
-        groupMemberService.saveGroupMemberEvent(req.getType(), req.getMember(), req.getExecutor(),
-                currentDate, req.getGroupName());
+        req.setDate(currentDate);
+        groupMemberService.saveGroupMemberEvent(req);
     }
 
     @PostMapping("/transaction")
@@ -30,7 +30,7 @@ public class GroupMemberController {
 
         String currentDate = DateUtils.getCurrentTime();
         groupMemberService.testTransaction(req.getType(), req.getMember(), req.getExecutor(),
-                currentDate, req.getGroupName());
+                currentDate, req.getGroupId());
     }
 
 }

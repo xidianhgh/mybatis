@@ -19,7 +19,7 @@ import java.nio.file.*;
 
 import static java.nio.file.StandardWatchEventKinds.*;
 
-@Component
+//@Component
 @Slf4j
 public class ListenFileService implements ApplicationRunner {
     @Autowired

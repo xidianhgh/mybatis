@@ -10,6 +10,7 @@ public class GroupMemberEntity {
     private String member;
     private String executor;
     private String date;
-    private String groupName;
+    private int salary;
+    private int groupId;
 
 }

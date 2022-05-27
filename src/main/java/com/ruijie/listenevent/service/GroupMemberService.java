@@ -2,6 +2,7 @@ package com.ruijie.listenevent.service;
 
 import com.ruijie.listenevent.dao.GroupMemberMapper;
 import com.ruijie.listenevent.entity.GroupMemberEntity;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,14 +13,10 @@ public class GroupMemberService {
     GroupMemberMapper groupMemberMapper;
 
     @Transactional
-    public void saveGroupMemberEvent(String type, String member, String executor, String date, String group) {
+    public void saveGroupMemberEvent(GroupMemberEntity req) {
         createTable();
         GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
-        groupMemberEntity.setType(type);
-        groupMemberEntity.setMember(member);
-        groupMemberEntity.setExecutor(executor);
-        groupMemberEntity.setDate(date);
-        groupMemberEntity.setGroupName(group);
+        BeanUtils.copyProperties(req,groupMemberEntity);
         groupMemberMapper.insert(groupMemberEntity);
     }
 
@@ -33,15 +30,15 @@ public class GroupMemberService {
         GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
         groupMemberEntity.setType(type);
 //        groupMemberEntity.setMember(member);
-        groupMemberEntity.setExecutor(executor);
+        groupMemberEntity.setExecutor("测试事务");
         groupMemberEntity.setDate(date);
-        groupMemberEntity.setGroupName("测试事务");
+        groupMemberEntity.setGroupId(1);
         groupMemberMapper.insert(groupMemberEntity);
     }
 
     @Transactional
-    public void testTransaction(String type, String member, String executor, String date, String group){
-//        saveGroupMemberEvent(type, member, executor, date, group);
+    public void testTransaction(String type, String member, String executor, String date, int groupId){
+//        saveData(type, member, executor, date, group);
 //        saveGroupMemberEventError(type, member, executor, date, group);
 
         GroupMemberEntity groupMemberEntity = new GroupMemberEntity();
@@ -49,14 +46,14 @@ public class GroupMemberService {
         groupMemberEntity.setMember(member);
         groupMemberEntity.setExecutor(executor);
         groupMemberEntity.setDate(date);
-        groupMemberEntity.setGroupName(group);
+        groupMemberEntity.setGroupId(1);
         groupMemberMapper.insert(groupMemberEntity);
 
         GroupMemberEntity groupMemberEntityt = new GroupMemberEntity();
         groupMemberEntityt.setType(type);
-        groupMemberEntityt.setExecutor(executor);
+        groupMemberEntityt.setExecutor("测试事务");
         groupMemberEntityt.setDate(date);
-        groupMemberEntityt.setGroupName("测试事务");
+        groupMemberEntityt.setGroupId(1);
         groupMemberMapper.insert(groupMemberEntityt);
     }
 
