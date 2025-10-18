@@ -5,16 +5,24 @@ import com.ruijie.listenevent.service.GroupMemberService;
 import com.ruijie.listenevent.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/groupMember")
 public class GroupMemberController {
     @Autowired
     GroupMemberService groupMemberService;
+
+    @GetMapping("")
+    public Map<String, Object> getInfo() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("value", groupMemberService.getMembers());
+        return map;
+    }
 
     @PostMapping("")
     public void test(@RequestBody GroupMemberEntity req) {
