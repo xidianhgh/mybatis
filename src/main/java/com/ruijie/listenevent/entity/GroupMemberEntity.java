@@ -12,5 +12,6 @@ public class GroupMemberEntity {
     private String date;
     private int salary;
     private int groupId;
+    private String passwd;
 
 }
