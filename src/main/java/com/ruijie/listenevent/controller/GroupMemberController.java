@@ -24,9 +24,12 @@ public class GroupMemberController {
         return map;
     }
 
+    @PostMapping("/login")
+    public GroupMemberEntity testMysqlInject(@RequestBody GroupMemberEntity req) {
+       return groupMemberService.getMember(req.getMember(),req.getPasswd());
+    }
     @PostMapping("")
     public void test(@RequestBody GroupMemberEntity req) {
-
         String currentDate = DateUtils.getCurrentTime();
         req.setDate(currentDate);
         groupMemberService.saveGroupMemberEvent(req);
@@ -35,7 +38,6 @@ public class GroupMemberController {
     @PostMapping("/transaction")
     @Transactional(rollbackFor = Exception.class)
     public void testTransaction(@RequestBody GroupMemberEntity req) {
-
         String currentDate = DateUtils.getCurrentTime();
         groupMemberService.testTransaction(req.getType(), req.getMember(), req.getExecutor(),
                 currentDate, req.getGroupId());

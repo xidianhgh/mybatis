@@ -22,6 +22,10 @@ public class GroupMemberService {
         groupMemberMapper.insert(groupMemberEntity);
     }
 
+    public GroupMemberEntity getMember(String member,String passwd){
+       return groupMemberMapper.getMember(member,passwd);
+    }
+
     public void createTable() {
         groupMemberMapper.createNewTable("group_member");
     }

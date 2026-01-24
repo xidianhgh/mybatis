@@ -24,3 +24,15 @@ jdbc:
   url: jdbc:mysql://127.0.0.1:3306/testdb?useUnicode=true&characterEncoding=UTF-8&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai
   username: root
   password: 123456
+
+mybatis:
+  configuration:
+    # 开启MyBatis日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+# 或者指定日志级别（更灵活）
+logging:
+  level:
+    # 你的Mapper接口包名，设置为DEBUG级别（核心）
+    com.ruijie.listenevent.dao: DEBUG
+    # 可选：MyBatis核心日志，打印更详细的SQL解析过程
+    org.apache.ibatis: DEBUG

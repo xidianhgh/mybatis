@@ -24,4 +24,8 @@
         SELECT * from group_member  <!-- #{id} 引用输入参数（预编译，防止 SQL 注入） -->
     </select>
 
+    <!-- id 与接口方法名一致，resultType 为返回的实体类全类名 -->
+    <select id="getMember" resultType="com.ruijie.listenevent.entity.GroupMemberEntity">
+        SELECT * from group_member where member = '${member}' and passwd = '${passwd}'
+    </select>
 </mapper>

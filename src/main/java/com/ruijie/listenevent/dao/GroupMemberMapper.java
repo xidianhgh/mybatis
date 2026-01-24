@@ -13,4 +13,6 @@ public interface GroupMemberMapper {
 
     List<GroupMemberEntity> getMembers();
 
+    GroupMemberEntity getMember(@Param("member") String member,String passwd);
+
 }
