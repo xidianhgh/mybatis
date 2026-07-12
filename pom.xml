@@ -40,7 +40,7 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-ollama</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.1.0-M4</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
@@ -94,23 +94,18 @@
             </plugin>
         </plugins>
     </build>
-    <!-- Spring AI 仓库（需添加，否则依赖下载失败） -->
-    <!-- 必须添加快照仓库，否则无法下载 1.1.0-SNAPSHOT -->
     <repositories>
-        <repository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
         <repository>
             <id>maven-central</id>
             <url>https://repo1.maven.org/maven2</url>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 </project>

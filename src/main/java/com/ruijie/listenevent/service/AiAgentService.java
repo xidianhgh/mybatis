@@ -7,20 +7,19 @@ import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.stereotype.Service;
 
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 @Service
 public class AiAgentService {
     ReactAgent agent;
     // 定义天气查询工具
-    public class WeatherTool implements BiFunction<String, ToolContext, String> {
+    public static class WeatherTool implements Function<String, String> {
         @Override
-        public String apply(String city, ToolContext toolContext) {
+        public String apply(String city) {
             return "It's always rainy in " + city + "!";
         }
     }
