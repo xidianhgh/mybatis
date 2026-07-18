@@ -1,45 +1,78 @@
 package com.ruijie.listenevent.controller;
 
 import com.alibaba.fastjson.JSONObject;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @RestController
 public class SpringAiController {
 
     @Autowired
-    private OllamaChatModel ollamaChatModel;
+    private ChatClient chatClient;
+
+    @Autowired
+    private MessageWindowChatMemory chatMemory;
 
     /**
-     * 同步对话接口：http://localhost:9999/ai/chat?msg=你的问题
+     * 同步多轮对话接口：
+     * POST http://localhost:9999/ai/chat
+     * Body: {"msg": "你好", "conversationId": "可选，不传则自动生成"}
      */
     @PostMapping("/ai/chat")
-    public String chat(@RequestBody JSONObject req) {
+    public JSONObject chat(@RequestBody JSONObject req) {
         String msg = req.getString("msg");
-        ChatResponse response = ollamaChatModel.call(new Prompt(msg));
-        return response.getResult().getOutput().getText();
+        String conversationId = req.getString("conversationId");
+        if (conversationId == null || conversationId.isEmpty()) {
+            conversationId = UUID.randomUUID().toString();
+        }
+
+        String reply = chatClient.prompt()
+                .user(msg)
+                .advisors(MessageChatMemoryAdvisor.builder(chatMemory)
+                        .conversationId(conversationId)
+                        .build())
+                .call()
+                .content();
+
+        JSONObject result = new JSONObject();
+        result.put("reply", reply);
+        result.put("conversationId", conversationId);
+        return result;
     }
 
     /**
-     * 流式对话接口（SSE）：http://localhost:9999/ai/stream-chat?msg=你的问题
+     * 流式多轮对话接口（SSE）：
+     * POST http://localhost:9999/ai/stream-chat
+     * Body: {"msg": "你好", "conversationId": "可选，不传则自动生成"}
      */
     @PostMapping("/ai/stream-chat")
     public SseEmitter streamChat(@RequestBody JSONObject req) {
         String msg = req.getString("msg");
-        SseEmitter emitter = new SseEmitter(60_000L);
+        String conversationId = req.getString("conversationId");
+        if (conversationId == null || conversationId.isEmpty()) {
+            conversationId = UUID.randomUUID().toString();
+        }
 
-        // 在异步线程中流式调用模型
+        SseEmitter emitter = new SseEmitter(60_000L);
+        final String cid = conversationId;
+
         new Thread(() -> {
             try {
-                ollamaChatModel.stream(new Prompt(msg))
-                        .doOnNext(response -> {
-                            String text = response.getResult().getOutput().getText();
+                chatClient.prompt()
+                        .user(msg)
+                        .advisors(MessageChatMemoryAdvisor.builder(chatMemory)
+                                .conversationId(cid)
+                                .build())
+                        .stream()
+                        .content()
+                        .doOnNext(text -> {
                             if (text != null && !text.isEmpty()) {
                                 try {
                                     emitter.send(SseEmitter.event().data(text));
