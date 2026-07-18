@@ -1,9 +1,8 @@
 package com.ruijie.listenevent.controller;
 
+import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
@@ -49,8 +48,9 @@ public class CustomDeepSeekController {
         }
 
         // 流式对话接口（逐字返回）：http://localhost:8080/stream-chat?msg=你的问题
-        @GetMapping("/stream-chat")
-        public Flux<String> streamChat(@RequestParam String msg) {
+        @PostMapping("/stream-chat")
+        public Flux<String> streamChat(@RequestBody JSONObject req) {
+            String msg = req.getString("msg");
             OllamaChatRequest request = new OllamaChatRequest(
                     MODEL_NAME,
                     List.of(new OllamaMessage("user", msg)),
