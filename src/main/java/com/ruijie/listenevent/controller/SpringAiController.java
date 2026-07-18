@@ -91,4 +91,12 @@ public class SpringAiController {
 
         return emitter;
     }
+//    如果需要多轮对话（带上下文记忆），需要手动把历史消息一起传入，例如：
+//    List<Message> messages = new ArrayList<>();
+//messages.add(new UserMessage("你好，我叫小明"));
+//messages.add(new AssistantMessage("你好小明！有什么可以帮你的？"));
+//messages.add(new UserMessage("我叫什么名字？"));  // 模型能根据上文回答
+//
+//    ChatResponse response = ollamaChatModel.call(new Prompt(messages));
+//或者可以使用 Spring AI 提供的 ChatClient + MessageChatMemoryAdvisor 来自动管理对话记忆，就不用手动维护历史消息了。需要我帮你加上多轮对话记忆功能吗？
 }
