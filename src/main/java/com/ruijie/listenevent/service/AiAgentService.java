@@ -16,11 +16,22 @@ import java.util.function.Function;
 @Service
 public class AiAgentService {
     ReactAgent agent;
+
+    // 定义天气查询工具的输入参数
+    public static class WeatherRequest {
+        private String city;
+
+        public WeatherRequest() {}
+
+        public String getCity() { return city; }
+        public void setCity(String city) { this.city = city; }
+    }
+
     // 定义天气查询工具
-    public static class WeatherTool implements Function<String, String> {
+    public static class WeatherTool implements Function<WeatherRequest, String> {
         @Override
-        public String apply(String city) {
-            return "It's always rainy in " + city + "!";
+        public String apply(WeatherRequest request) {
+            return "It's always rainy in " + request.getCity() + "!";
         }
     }
 
@@ -40,7 +51,7 @@ public class AiAgentService {
     public void createAgent(){
         ToolCallback weatherTool = FunctionToolCallback.builder("get_weather", new WeatherTool())
                 .description("Get weather for a given city")
-                .inputType(String.class)
+                .inputType(WeatherRequest.class)
                 .build();
 
         // 创建 agent
