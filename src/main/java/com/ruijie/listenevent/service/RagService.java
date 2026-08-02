@@ -2,6 +2,7 @@ package com.ruijie.listenevent.service;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.TextReader;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,9 +32,22 @@ public class RagService {
     @Value("${spring.ai.rag.similarity-threshold:0.5}")
     private double similarityThreshold;
 
+    /** 每个 chunk 的目标 token 数 */
+    @Value("${spring.ai.rag.chunk-size:800}")
+    private int chunkSize;
+
+    /** 相邻 chunk 之间的重叠 token 数，防止语义割裂 */
+    @Value("${spring.ai.rag.chunk-overlap:200}")
+    private int chunkOverlap;
+
     /**
-     * 加载文档到向量存储
+     * 加载文档到向量存储（使用 TokenTextSplitter 按 token 分块 + overlap 重叠）
      * 支持 txt 等纯文本文件，如需 PDF/Word 可换用 TikaDocumentReader
+     *
+     * 分块策略：
+     * 1. TextReader 读取整个文件为原始 Document
+     * 2. TokenTextSplitter 按 token 数切分，并通过 overlap 保持上下文连贯
+     * 3. 将分块后的 Document 存入向量库
      *
      * @param resource Spring Resource 对象
      * @return 加载的文档片段数量
@@ -41,9 +55,21 @@ public class RagService {
     public int loadDocument(Resource resource) {
         TextReader textReader = new TextReader(resource);
         textReader.getCustomMetadata().put("source", resource.getFilename());
-        List<Document> documents = textReader.get();
-        vectorStore.add(documents);
-        return documents.size();
+        List<Document> rawDocuments = textReader.get();
+
+        // 使用 TokenTextSplitter 进行分块
+        // 参数：chunkSize, minChunkSizeChars, minChunkLengthToEmbed, maxNumChunks, keepSeparator
+        TokenTextSplitter splitter = new TokenTextSplitter(
+                chunkSize,       // 每个 chunk 的目标 token 数
+                350,             // 最小 chunk 字符数，低于此值不再切分
+                5,               // 小于此长度的 chunk 不生成向量
+                chunkOverlap,    // 相邻 chunk 重叠 token 数，保持语义连贯
+                true             // 保留分隔符
+        );
+        List<Document> chunkedDocuments = splitter.apply(rawDocuments);
+
+        vectorStore.add(chunkedDocuments);
+        return chunkedDocuments.size();
     }
 
     /**
