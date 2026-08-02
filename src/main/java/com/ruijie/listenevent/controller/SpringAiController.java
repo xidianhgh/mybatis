@@ -28,28 +28,44 @@ public class SpringAiController {
     private RagService ragService;
 
     /**
-     * 同步多轮对话接口 —— 集成 RAG
+     * 同步多轮对话接口 —— 按需集成 RAG
      * POST http://localhost:9999/ai/chat
-     * Body: {"msg": "你好", "conversationId": "可选，不传则自动生成"}
+     * Body: {"msg": "你好", "conversationId": "可选", "needRag": true/false/不传}
+     *
+     * needRag 参数说明：
+     * - true：强制使用 RAG，始终进行向量检索
+     * - false：跳过 RAG，直接调用 LLM
+     * - 不传：自动判断，先做相关性检索，有高相关结果才启用 RAG
      *
      * 执行链路：
-     * 1. 用户提问 → 程序固定触发向量检索
-     * 2. 拿到 TopN 片段
-     * 3. 把片段 + 问题一起塞进 Prompt（system 消息携带参考资料）
+     * 1. 根据 needRag 参数决定是否触发向量检索
+     * 2. 需要 RAG 时：拿到 TopN 片段 → 片段+问题塞进 Prompt
+     * 3. 不需要 RAG 时：直接将用户问题发送给 LLM
      * 4. 调用 LLM 同步生成
-     * 5. Prompt 约束：如果参考资料里没有答案，如实说无法回答，不要编造
      */
     @PostMapping("/ai/chat")
     public JSONObject chat(@RequestBody JSONObject req) {
         String msg = req.getString("msg");
         String conversationId = req.getString("conversationId");
+        Boolean needRag = req.getBoolean("needRag");
         if (conversationId == null || conversationId.isEmpty()) {
             conversationId = UUID.randomUUID().toString();
         }
 
-        // ====== RAG 步骤：强制先走向量检索 ======
-        List<String> contextParts = ragService.search(msg);
-        String systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
+        // ====== 按需 RAG：根据 needRag 参数决定策略 ======
+        String systemPrompt = null;
+        if (Boolean.TRUE.equals(needRag)) {
+            // 强制 RAG：始终检索
+            List<String> contextParts = ragService.search(msg);
+            systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
+        } else if (!Boolean.FALSE.equals(needRag)) {
+            // 自动判断：检索并过滤低相关性结果，有高相关片段才启用 RAG
+            List<String> relevantParts = ragService.searchWithRelevance(msg);
+            if (!relevantParts.isEmpty()) {
+                systemPrompt = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
+            }
+        }
+        // needRag == false 时 systemPrompt 保持 null，跳过 RAG
 
         // ====== 构建 ChatClient 调用 ======
         var promptSpec = chatClient.prompt()

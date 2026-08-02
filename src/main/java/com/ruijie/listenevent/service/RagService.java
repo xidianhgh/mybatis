@@ -27,6 +27,10 @@ public class RagService {
     @Value("${spring.ai.rag.top-k:3}")
     private int topK;
 
+    /** 相似度阈值：低于此分数的结果视为不相关，触发自动跳过 RAG */
+    @Value("${spring.ai.rag.similarity-threshold:0.5}")
+    private double similarityThreshold;
+
     /**
      * 加载文档到向量存储
      * 支持 txt 等纯文本文件，如需 PDF/Word 可换用 TikaDocumentReader
@@ -53,6 +57,26 @@ public class RagService {
                 SearchRequest.builder()
                         .query(query)
                         .topK(topK)
+                        .build()
+        );
+        return docs.stream()
+                .map(Document::getText)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 带相关性过滤的向量检索：只返回相似度高于阈值的文档片段
+     * 用于自动判断是否需要 RAG —— 如果没有高相关结果，说明问题不依赖知识库
+     *
+     * @param query 用户问题
+     * @return 高相关的文档内容列表（可能为空，表示不需要 RAG）
+     */
+    public List<String> searchWithRelevance(String query) {
+        List<Document> docs = vectorStore.similaritySearch(
+                SearchRequest.builder()
+                        .query(query)
+                        .topK(topK)
+                        .similarityThreshold(similarityThreshold)
                         .build()
         );
         return docs.stream()
