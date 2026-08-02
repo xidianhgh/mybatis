@@ -1,14 +1,18 @@
 package com.ruijie.listenevent.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import com.ruijie.listenevent.service.RagService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -20,10 +24,20 @@ public class SpringAiController {
     @Autowired
     private MessageWindowChatMemory chatMemory;
 
+    @Autowired
+    private RagService ragService;
+
     /**
-     * 同步多轮对话接口：
+     * 同步多轮对话接口 —— 集成 RAG
      * POST http://localhost:9999/ai/chat
      * Body: {"msg": "你好", "conversationId": "可选，不传则自动生成"}
+     *
+     * 执行链路：
+     * 1. 用户提问 → 程序固定触发向量检索
+     * 2. 拿到 TopN 片段
+     * 3. 把片段 + 问题一起塞进 Prompt（system 消息携带参考资料）
+     * 4. 调用 LLM 同步生成
+     * 5. Prompt 约束：如果参考资料里没有答案，如实说无法回答，不要编造
      */
     @PostMapping("/ai/chat")
     public JSONObject chat(@RequestBody JSONObject req) {
@@ -33,11 +47,22 @@ public class SpringAiController {
             conversationId = UUID.randomUUID().toString();
         }
 
-        String reply = chatClient.prompt()
-                .user(msg)
+        // ====== RAG 步骤：强制先走向量检索 ======
+        List<String> contextParts = ragService.search(msg);
+        String systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
+
+        // ====== 构建 ChatClient 调用 ======
+        var promptSpec = chatClient.prompt()
                 .advisors(MessageChatMemoryAdvisor.builder(chatMemory)
                         .conversationId(conversationId)
-                        .build())
+                        .build());
+
+        // 如果有 RAG 上下文，注入 system 提示词
+        if (systemPrompt != null) {
+            promptSpec = promptSpec.system(systemPrompt);
+        }
+
+        String reply = promptSpec.user(msg)
                 .call()
                 .content();
 
@@ -48,9 +73,16 @@ public class SpringAiController {
     }
 
     /**
-     * 流式多轮对话接口（SSE）：
+     * 流式多轮对话接口（SSE）—— 集成 RAG
      * POST http://localhost:9999/ai/stream-chat
      * Body: {"msg": "你好", "conversationId": "可选，不传则自动生成"}
+     *
+     * 执行链路：
+     * 1. 用户提问 → 程序固定触发向量检索
+     * 2. 拿到 TopN 片段
+     * 3. 把片段 + 问题一起塞进 Prompt（system 消息携带参考资料）
+     * 4. 调用 LLM 流式生成
+     * 5. Prompt 约束：如果参考资料里没有答案，如实说无法回答，不要编造
      */
     @PostMapping("/ai/stream-chat")
     public SseEmitter streamChat(@RequestBody JSONObject req) {
@@ -60,16 +92,27 @@ public class SpringAiController {
             conversationId = UUID.randomUUID().toString();
         }
 
-        SseEmitter emitter = new SseEmitter(60_000L);
+        SseEmitter emitter = new SseEmitter(120_000L);
         final String cid = conversationId;
 
         new Thread(() -> {
             try {
-                chatClient.prompt()
-                        .user(msg)
+                // ====== RAG 步骤：强制先走向量检索 ======
+                List<String> contextParts = ragService.search(msg);
+                String systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
+
+                // ====== 构建 ChatClient 调用 ======
+                var promptSpec = chatClient.prompt()
                         .advisors(MessageChatMemoryAdvisor.builder(chatMemory)
                                 .conversationId(cid)
-                                .build())
+                                .build());
+
+                // 如果有 RAG 上下文，注入 system 提示词
+                if (systemPrompt != null) {
+                    promptSpec = promptSpec.system(systemPrompt);
+                }
+
+                promptSpec.user(msg)
                         .stream()
                         .content()
                         .doOnNext(text -> {
@@ -91,12 +134,26 @@ public class SpringAiController {
 
         return emitter;
     }
-//    如果需要多轮对话（带上下文记忆），需要手动把历史消息一起传入，例如：
-//    List<Message> messages = new ArrayList<>();
-//messages.add(new UserMessage("你好，我叫小明"));
-//messages.add(new AssistantMessage("你好小明！有什么可以帮你的？"));
-//messages.add(new UserMessage("我叫什么名字？"));  // 模型能根据上文回答
-//
-//    ChatResponse response = ollamaChatModel.call(new Prompt(messages));
-//或者可以使用 Spring AI 提供的 ChatClient + MessageChatMemoryAdvisor 来自动管理对话记忆，就不用手动维护历史消息了。需要我帮你加上多轮对话记忆功能吗？
+
+    /**
+     * 文档上传接口：将文档加载到向量存储中，供 RAG 检索使用
+     * POST http://localhost:9999/ai/rag/upload
+     * Content-Type: multipart/form-data
+     * 参数: file - 上传的文件（支持 txt 等纯文本格式）
+     */
+    @PostMapping("/ai/rag/upload")
+    public JSONObject uploadDocument(@RequestParam("file") MultipartFile file) {
+        JSONObject result = new JSONObject();
+        try {
+            int chunks = ragService.loadDocument(new InputStreamResource(file.getInputStream()));
+            result.put("success", true);
+            result.put("fileName", file.getOriginalFilename());
+            result.put("chunks", chunks);
+            result.put("message", "文档已成功加载到向量存储");
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "文档加载失败: " + e.getMessage());
+        }
+        return result;
+    }
 }

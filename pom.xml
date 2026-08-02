@@ -42,6 +42,12 @@
             <artifactId>spring-ai-ollama</artifactId>
             <version>1.1.0-M4</version>
         </dependency>
+        <!-- Spring AI 文档读取器（用于 RAG 文档加载） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-tika-document-reader</artifactId>
+            <version>1.1.0-M4</version>
+        </dependency>
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
