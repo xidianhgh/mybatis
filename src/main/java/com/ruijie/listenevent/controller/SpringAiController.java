@@ -7,6 +7,7 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -100,6 +101,7 @@ public class SpringAiController {
      * 4. 调用 LLM 流式生成
      * 5. Prompt 约束：如果参考资料里没有答案，如实说无法回答，不要编造
      */
+//    @PostMapping(value="/ai/stream-chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PostMapping("/ai/stream-chat")
     public SseEmitter streamChat(@RequestBody JSONObject req) {
         String msg = req.getString("msg");

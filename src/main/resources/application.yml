@@ -24,6 +24,21 @@ spring:
       # RAG 检索返回的文档片段数量
       top-k: 3
 
+    # MCP Client 配置：连接外部 MCP Server
+    mcp:
+      client:
+        enabled: true  # 设为 false 禁用 MCP（需先确保 MCP Server 环境就绪后再改为 true）
+        # Stdio 方式连接本地 MCP Server
+        stdio:
+          servers-configuration: classpath:mcp-servers.json
+
+logging:
+  level:
+    # 查看 MCP 工具调用日志
+    org.springframework.ai.mcp: DEBUG
+    # 查看 ChatClient 工具调用过程
+    org.springframework.ai.chat.client: DEBUG
+
   # 文件上传大小限制（用于文档上传接口）
   servlet:
     multipart:

@@ -7,6 +7,8 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -58,12 +60,20 @@ public class ClientConfig {
     }
 
     /**
-     * ChatClient：封装了 ChatModel + 对话记忆 Advisor
+     * ChatClient：封装了 ChatModel + 对话记忆 Advisor + MCP 工具
+     * MCP 工具通过 ToolCallbackProvider 自动注入，AI 可在对话中调用 Brave Search 和 FileSystem
      */
     @Bean
-    public ChatClient chatClient(OllamaChatModel ollamaChatModel, MessageWindowChatMemory chatMemory) {
-        return ChatClient.builder(ollamaChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .build();
+    public ChatClient chatClient(OllamaChatModel ollamaChatModel, MessageWindowChatMemory chatMemory,
+                                 @Autowired(required = false) ToolCallbackProvider mcpTools) {
+        var builder = ChatClient.builder(ollamaChatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build());
+
+        // 如果有 MCP 工具，注入到 ChatClient
+        if (mcpTools != null) {
+            builder.defaultToolCallbacks(mcpTools.getToolCallbacks());
+        }
+
+        return builder.build();
     }
 }
