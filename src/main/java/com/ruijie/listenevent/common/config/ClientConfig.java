@@ -65,13 +65,15 @@ public class ClientConfig {
      */
     @Bean
     public ChatClient chatClient(OllamaChatModel ollamaChatModel, MessageWindowChatMemory chatMemory,
-                                 @Autowired(required = false) ToolCallbackProvider mcpTools) {
+                                 @Autowired(required = false) ToolCallbackProvider[] mcpTools) {
         var builder = ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build());
 
-        // 如果有 MCP 工具，注入到 ChatClient
+        // 如果有 MCP 工具（Client + Server），全部注入到 ChatClient
         if (mcpTools != null) {
-            builder.defaultToolCallbacks(mcpTools.getToolCallbacks());
+            for (ToolCallbackProvider provider : mcpTools) {
+                builder.defaultToolCallbacks(provider.getToolCallbacks());
+            }
         }
 
         return builder.build();

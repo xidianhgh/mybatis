@@ -24,8 +24,16 @@ spring:
       # RAG 检索返回的文档片段数量
       top-k: 3
 
-    # MCP Client 配置：连接外部 MCP Server
+    # MCP 配置
     mcp:
+      # MCP Server 配置：以 Streamable-HTTP 模式对外暴露工具
+      server:
+        name: listenevent-mcp-server
+        version: 1.0.0
+        protocol: STATELESS
+        streamable-http:
+          mcp-endpoint: /mcp
+      # MCP Client 配置：连接外部 MCP Server
       client:
         enabled: true  # 设为 false 禁用 MCP（需先确保 MCP Server 环境就绪后再改为 true）
         # Stdio 方式连接本地 MCP Server

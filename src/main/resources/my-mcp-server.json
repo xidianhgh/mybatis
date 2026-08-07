@@ -1,0 +1,19 @@
+//改造内容
+//添加 MCP Server 依赖 — pom.xml 新增 spring-ai-starter-mcp-server-webmvc，提供 Streamable-HTTP 传输层支持
+//MCP Server 配置 — application.yml 新增 spring.ai.mcp.server 配置段，声明服务名称和版本
+//暴露 3 个 MCP Tool：
+//WeatherToolService — getWeather：天气查询工具
+//AiChatToolService — chatWithKnowledgeBase（AI 知识库问答）、searchKnowledgeBase（知识库向量检索）
+//McpServerConfig — 通过 MethodToolCallbackProvider 将所有 @Tool 方法注册为 MCP 工具
+
+//使用方式
+//启动服务后，MCP Server 的 Streamable-HTTP 端点默认在：
+//POST http://localhost:9999/mcp
+//{
+//  "mcpServers": {
+//    "listenevent": {
+//      "url": "http://<host>:9999/mcp"
+//    }
+//  }
+//}
+//客户端连接后可发现并调用 getWeather、chatWithKnowledgeBase、searchKnowledgeBase 三个工具。
