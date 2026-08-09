@@ -23,6 +23,22 @@ spring:
       embedding-model: nomic-embed-text
       # RAG 检索返回的文档片段数量
       top-k: 3
+      # LLM 重排配置
+      rerank-candidate-multiplier: 3    # 重排时召回的候选倍数（topK * 3 = 9 个候选）
+      rerank-top-k: 3                  # 重排后最终保留的文档数
+    vectorstore:
+      milvus:
+        initialize-schema: true
+        collection-name: hgh  # 向量数据集合名称，可自定义
+#        embedding-dimension: 1536       # 向量维度，需与 embedding 模型匹配（nomic-embed-text 默认 768）
+        # 自定义各个字段名称
+        id-field-name: id           #主键字段，原来默认 doc_id
+        content-field-name: content   #原来叫content
+        embedding-field-name: vector      #原来叫embedding
+        metadata-field-name: metadata  #原来叫metadata
+        client:
+          host: 127.0.0.1
+          port: 19530
 
     # MCP 配置
     mcp:

@@ -53,15 +53,15 @@ public class SpringAiController {
             conversationId = UUID.randomUUID().toString();
         }
 
-        // ====== 按需 RAG：根据 needRag 参数决定策略 ======
+        // ====== 按需 RAG：根据 needRag 参数决定策略（带 LLM 重排） ======
         String systemPrompt = null;
         if (Boolean.TRUE.equals(needRag)) {
-            // 强制 RAG：始终检索
-            List<String> contextParts = ragService.search(msg);
+            // 强制 RAG：召回 + 重排
+            List<String> contextParts = ragService.searchWithRerank(msg);
             systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
         } else if (!Boolean.FALSE.equals(needRag)) {
-            // 自动判断：检索并过滤低相关性结果，有高相关片段才启用 RAG
-            List<String> relevantParts = ragService.searchWithRelevance(msg);
+            // 自动判断：召回 + 重排 + 相关性过滤
+            List<String> relevantParts = ragService.searchWithRelevanceAndRerank(msg);
             if (!relevantParts.isEmpty()) {
                 systemPrompt = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
             }

@@ -6,8 +6,8 @@ import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
 import org.springframework.ai.ollama.management.ModelManagementOptions;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.ai.vectorstore.VectorStore;
+// import org.springframework.ai.vectorstore.SimpleVectorStore;
+// import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,12 +44,13 @@ public class RagConfig {
                 ObservationRegistry.NOOP, ModelManagementOptions.defaults());
     }
 
-    /**
-     * 内存向量存储：用于存储文档向量并进行相似度检索
-     * 生产环境可替换为 Milvus/Redis/PG 等持久化向量数据库
-     */
-    @Bean
-    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
-        return SimpleVectorStore.builder(embeddingModel).build();
-    }
+    // /**
+    //  * 内存向量存储：用于存储文档向量并进行相似度检索
+    //  * 已替换为 Milvus 向量数据库，VectorStore Bean 由 spring-ai-milvus-store 自动配置
+    //  * 配置见 application.yml: spring.ai.vectorstore.milus
+    //  */
+    // @Bean
+    // public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+    //     return SimpleVectorStore.builder(embeddingModel).build();
+    // }
 }

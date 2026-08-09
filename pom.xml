@@ -66,6 +66,12 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-client</artifactId>
         </dependency>
+        <!-- Milvus 向量数据库（Starter，含自动配置） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-milvus</artifactId>
+            <version>1.1.0-M4</version>
+        </dependency>
         <!-- MCP Server：以 Streamable-HTTP 模式对外暴露 MCP 工具 -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
