@@ -63,7 +63,7 @@ public class RagService {
     @Value("${spring.ai.rag.rerank-candidate-multiplier:3}")
     private int rerankCandidateMultiplier;
 
-    /** 重排后最终保留的文档数量（默认等于 topK） */
+    /** 重排后最终保留的文档数量（默认等于 topK） 如果不希望重排，可以把这个值设大一点*/
     @Value("${spring.ai.rag.rerank-top-k:${spring.ai.rag.top-k:3}}")
     private int rerankTopK;
 
