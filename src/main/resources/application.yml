@@ -2,6 +2,13 @@ server:
   port: 9999
 
 spring:
+  # Redis 配置（短期记忆存储）
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      timeout: 3000ms
+
   ai:
     dashscope:
       api-key: sk-b40137d26a084faabf5b27206b99152a

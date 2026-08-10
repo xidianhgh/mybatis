@@ -2,7 +2,6 @@ package com.ruijie.listenevent.common.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
@@ -49,19 +48,10 @@ public class ClientConfig {
     }
 
     /**
-     * 对话记忆存储（内存版，最多保存20条历史消息）
-     */
-    @Bean
-    public MessageWindowChatMemory chatMemory() {
-        return MessageWindowChatMemory.builder()
-                .chatMemoryRepository(new InMemoryChatMemoryRepository())
-                .maxMessages(20)
-                .build();
-    }
-
-    /**
      * ChatClient：封装了 ChatModel + 对话记忆 Advisor + MCP 工具
      * MCP 工具通过 ToolCallbackProvider 自动注入，AI 可在对话中调用 Brave Search 和 FileSystem
+     *
+     * 注意：chatMemory Bean 已迁移到 MemoryConfig 中（使用 Redis 存储，支持兜底）
      */
     @Bean
     public ChatClient chatClient(OllamaChatModel ollamaChatModel, MessageWindowChatMemory chatMemory,

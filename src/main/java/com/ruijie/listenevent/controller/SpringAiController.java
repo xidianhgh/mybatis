@@ -1,6 +1,7 @@
 package com.ruijie.listenevent.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import com.ruijie.listenevent.service.LongTermMemoryService;
 import com.ruijie.listenevent.service.RagService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -28,21 +29,25 @@ public class SpringAiController {
     @Autowired
     private RagService ragService;
 
+    @Autowired
+    private LongTermMemoryService longTermMemoryService;
+
     /**
-     * 同步多轮对话接口 —— 按需集成 RAG
+     * 同步多轮对话接口 —— 集成短期记忆（Redis）+ 长期记忆（Milvus）+ 按需 RAG
      * POST http://localhost:9999/ai/chat
      * Body: {"msg": "你好", "conversationId": "可选", "needRag": true/false/不传}
      *
-     * needRag 参数说明：
-     * - true：强制使用 RAG，始终进行向量检索
-     * - false：跳过 RAG，直接调用 LLM
-     * - 不传：自动判断，先做相关性检索，有高相关结果才启用 RAG
+     * 记忆架构：
+     * - 短期记忆（Redis）：当前会话的对话上下文，自动通过 MessageWindowChatMemory 管理
+     * - 长期记忆（Milvus）：跨会话的用户偏好/重要事实，自动召回并注入 prompt
+     * - RAG（Milvus）：知识库文档检索，按需触发
      *
      * 执行链路：
-     * 1. 根据 needRag 参数决定是否触发向量检索
-     * 2. 需要 RAG 时：拿到 TopN 片段 → 片段+问题塞进 Prompt
-     * 3. 不需要 RAG 时：直接将用户问题发送给 LLM
-     * 4. 调用 LLM 同步生成
+     * 1. 召回长期记忆 → 注入 system prompt
+     * 2. 按需 RAG 检索 → 追加到 system prompt
+     * 3. 短期记忆自动加载（通过 MessageChatMemoryAdvisor）
+     * 4. 调用 LLM 生成回复
+     * 5. 异步提取并存储长期记忆
      */
     @PostMapping("/ai/chat")
     public JSONObject chat(@RequestBody JSONObject req) {
@@ -53,40 +58,60 @@ public class SpringAiController {
             conversationId = UUID.randomUUID().toString();
         }
 
+        // ====== 长期记忆召回：跨会话的用户偏好和重要事实 ======
+        String memoryContext = longTermMemoryService.buildMemoryContext(msg, 5);
+
         // ====== 按需 RAG：根据 needRag 参数决定策略（带 LLM 重排） ======
-        String systemPrompt = null;
+        String ragContext = null;
         if (Boolean.TRUE.equals(needRag)) {
-            // 强制 RAG：召回 + 重排
             List<String> contextParts = ragService.searchWithRerank(msg);
-            systemPrompt = ragService.buildEnhancedSystemPrompt(msg, contextParts);
+            ragContext = ragService.buildEnhancedSystemPrompt(msg, contextParts);
         } else if (!Boolean.FALSE.equals(needRag)) {
-            // 自动判断：召回 + 重排 + 相关性过滤
             List<String> relevantParts = ragService.searchWithRelevanceAndRerank(msg);
             if (!relevantParts.isEmpty()) {
-                systemPrompt = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
+                ragContext = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
             }
         }
-        // needRag == false 时 systemPrompt 保持 null，跳过 RAG
 
-        // ====== 构建 ChatClient 调用 ======
+        // ====== 合并 system prompt：长期记忆 + RAG 上下文 ======
+        String combinedSystemPrompt = combinePrompts(memoryContext, ragContext);
+
+        // ====== 构建 ChatClient 调用（短期记忆通过 Advisor 自动加载） ======
         var promptSpec = chatClient.prompt()
                 .advisors(MessageChatMemoryAdvisor.builder(chatMemory)
                         .conversationId(conversationId)
                         .build());
 
-        // 如果有 RAG 上下文，注入 system 提示词
-        if (systemPrompt != null) {
-            promptSpec = promptSpec.system(systemPrompt);
+        if (combinedSystemPrompt != null) {
+            promptSpec = promptSpec.system(combinedSystemPrompt);
         }
 
         String reply = promptSpec.user(msg)
                 .call()
                 .content();
 
+        // ====== 异步提取并存储长期记忆（不阻塞主流程） ======
+        longTermMemoryService.extractAndStoreMemory(msg, reply);
+
         JSONObject result = new JSONObject();
         result.put("reply", reply);
         result.put("conversationId", conversationId);
         return result;
+    }
+
+    /**
+     * 合并长期记忆和 RAG 上下文为统一的 system prompt
+     */
+    private String combinePrompts(String memoryContext, String ragContext) {
+        if (memoryContext == null && ragContext == null) return null;
+        StringBuilder sb = new StringBuilder();
+        if (memoryContext != null) {
+            sb.append(memoryContext).append("\n\n");
+        }
+        if (ragContext != null) {
+            sb.append(ragContext);
+        }
+        return sb.toString();
     }
 
     /**
