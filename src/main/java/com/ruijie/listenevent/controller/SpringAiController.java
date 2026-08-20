@@ -67,10 +67,10 @@ public class SpringAiController {
             List<String> contextParts = ragService.searchWithRerank(msg);
             ragContext = ragService.buildEnhancedSystemPrompt(msg, contextParts);
         } else if (!Boolean.FALSE.equals(needRag)) {
-            List<String> relevantParts = ragService.searchWithRelevanceAndRerank(msg);
-            if (!relevantParts.isEmpty()) {
-                ragContext = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
-            }
+//            List<String> relevantParts = ragService.searchWithRelevanceAndRerank(msg);
+//            if (!relevantParts.isEmpty()) {
+//                ragContext = ragService.buildEnhancedSystemPrompt(msg, relevantParts);
+//            }
         }
 
         // ====== 合并 system prompt：长期记忆 + RAG 上下文 ======

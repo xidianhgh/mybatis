@@ -85,13 +85,14 @@ public class RagService {
         List<Document> rawDocuments = textReader.get();
 
         // 使用 TokenTextSplitter 进行分块
-        // 参数：chunkSize, minChunkSizeChars, minChunkLengthToEmbed, maxNumChunks, keepSeparator
+        // 参数：chunkSize, minChunkSizeChars, minChunkLengthToEmbed, maxNumChunks, keepSeparator, separators
         TokenTextSplitter splitter = new TokenTextSplitter(
                 chunkSize,       // 每个 chunk 的目标 token 数
                 350,             // 最小 chunk 字符数，低于此值不再切分
                 5,               // 小于此长度的 chunk 不生成向量
                 chunkOverlap,    // 相邻 chunk 重叠 token 数，保持语义连贯
-                true             // 保留分隔符
+                true,            // 保留分隔符
+                List.of('\n')    // 分隔符列表
         );
         List<Document> chunkedDocuments = splitter.apply(rawDocuments);
 

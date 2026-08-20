@@ -17,12 +17,13 @@ spring:
       # 本地 Ollama 服务地址（默认端口 11434，无需修改）
       base-url: http://localhost:11434
       # 你本地创建的 DeepSeek 模型名（如 deepseek-r1，必须和 ollama list 中的一致）
-      model: mydeep
+      model: qwen3:8b
       # 可选：自定义模型生成参数（和 Modelfile 中的参数对应）
       options:
         temperature: 0.7        # 生成随机性
         num-ctx: 2048           # 上下文窗口大小
         top-p: 0.95             # 核采样参数
+        think: false             # 关闭思考模式，避免干扰工具调用
 
     # RAG 相关配置
     rag:
