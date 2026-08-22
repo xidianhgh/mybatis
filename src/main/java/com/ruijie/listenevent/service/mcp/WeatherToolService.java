@@ -13,6 +13,6 @@ public class WeatherToolService {
 
     @Tool(description = "查询指定城市的天气信息，返回该城市的天气描述")
     public String getWeather(@ToolParam(description = "城市名称，例如：北京、上海") String city) {
-        return "It's always rainy in " + city + "!";
+        return "It's always rainy in " + city + "! The temperature is thirty‑nine degrees Celsius.";
     }
 }

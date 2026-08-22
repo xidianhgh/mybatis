@@ -31,7 +31,7 @@ public class AiAgentService {
     public static class WeatherTool implements Function<WeatherRequest, String> {
         @Override
         public String apply(WeatherRequest request) {
-            return "It's always rainy in " + request.getCity() + "!";
+            return "It's always sunny in " + request.getCity() + "!";
         }
     }
 
