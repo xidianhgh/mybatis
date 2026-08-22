@@ -14,6 +14,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Plan-and-Execute + ReAct 混合模式服务
@@ -47,6 +50,12 @@ public class PlanExecuteService {
     /** 执行阶段最大步数（超出时提前终止，进入综合阶段） */
     private static final int MAX_EXECUTE_STEPS = 5;
 
+    /** 运行中的任务状态映射（taskId -> TaskState） */
+    private final Map<String, TaskState> runningTasks = new ConcurrentHashMap<>();
+
+    /** 任务 ID 自增计数器 */
+    private final AtomicInteger taskCounter = new AtomicInteger(0);
+
     public PlanExecuteService(
             @Qualifier("ollamaChatModel") ChatModel ollamaChatModel,
             ChatClient chatClient,
@@ -63,6 +72,17 @@ public class PlanExecuteService {
      * @return 最终综合答案
      */
     public String execute(String userQuery) {
+        return executeInternal(userQuery, null);
+    }
+
+    /**
+     * Plan-and-Execute + ReAct 主流程（内部实现）
+     *
+     * @param userQuery 用户原始问题
+     * @param taskState 任务状态（为 null 表示同步执行，不支持取消）
+     * @return 最终综合答案
+     */
+    private String executeInternal(String userQuery, TaskState taskState) {
         log.info("====== Plan-and-Execute 开始 | 问题: {} ======", userQuery);
 
         // ====== 第一阶段：规划 ======
@@ -72,14 +92,120 @@ public class PlanExecuteService {
             log.info("  [{}] {} (类型: {})", step.getStepId(), step.getContent(), step.getType());
         }
 
+        // 更新任务状态中的计划步骤
+        if (taskState != null) {
+            taskState.allSteps = plan.stream()
+                    .map(Step::getContent)
+                    .toList();
+        }
+
         // ====== 第二阶段：逐步执行（ReAct） ======
-        List<StepResult> results = executeSteps(plan, userQuery);
+        List<StepResult> results = executeSteps(plan, userQuery, taskState);
+
+        // 任务被取消时跳过综合阶段，直接返回
+        if (taskState != null && taskState.cancelled.get()) {
+            log.info("任务已被取消，跳过综合阶段");
+            return "任务已被取消";
+        }
 
         // ====== 第三阶段：综合 ======
         String finalAnswer = synthesize(userQuery, results);
         log.info("====== Plan-and-Execute 完成 ======");
 
         return finalAnswer;
+    }
+
+    // ==================== 任务管理 ====================
+
+    /**
+     * 异步启动任务执行，返回任务 ID
+     * 任务在后台线程中运行，可通过 stopTask 取消
+     */
+    public String startTask(String userQuery) {
+        String taskId = "task-" + taskCounter.incrementAndGet();
+        TaskState state = new TaskState(taskId, userQuery);
+        runningTasks.put(taskId, state);
+
+        Thread.ofVirtual().name("plan-execute-" + taskId).start(() -> {
+            try {
+                String answer = executeInternal(userQuery, state);
+                state.finalAnswer = answer;
+                state.completed = true;
+            } catch (Exception e) {
+                log.error("任务 [{}] 执行失败: {}", taskId, e.getMessage(), e);
+                state.completed = true;
+                state.finalAnswer = "执行失败: " + e.getMessage();
+            }
+        });
+
+        return taskId;
+    }
+
+    /**
+     * 停止正在执行的任务
+     *
+     * @return 任务状态信息，包含所有步骤、已完成步骤、停止位置
+     */
+    public JSONObject stopTask(String taskId) {
+        TaskState state = runningTasks.get(taskId);
+        if (state == null) {
+            return null;
+        }
+        // 设置取消标志，执行循环中会检测到并终止
+        state.cancelled.set(true);
+
+        // 等待任务实际停止（最多 30 秒）
+        int waitCount = 0;
+        while (!state.completed && waitCount < 300) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            waitCount++;
+        }
+
+        // 兜底：如果任务线程尚未设置 stoppedAtStep，根据当前执行进度推断
+        if (state.cancelled.get() && state.stoppedAtStep == null) {
+            int idx = state.currentStepIndex;
+            if (idx < state.allSteps.size()) {
+                state.stoppedAtStep = state.allSteps.get(idx);
+            } else if (!state.allSteps.isEmpty()) {
+                state.stoppedAtStep = state.allSteps.get(state.allSteps.size() - 1);
+            }
+        }
+
+        return buildTaskStatus(state);
+    }
+
+    /**
+     * 查询任务当前状态
+     */
+    public JSONObject getTaskStatus(String taskId) {
+        TaskState state = runningTasks.get(taskId);
+        if (state == null) {
+            return null;
+        }
+        return buildTaskStatus(state);
+    }
+
+    /**
+     * 构建任务状态 JSON：包含所有步骤、已完成步骤、停止位置
+     */
+    private JSONObject buildTaskStatus(TaskState state) {
+        JSONObject status = new JSONObject();
+        status.put("taskId", state.taskId);
+        status.put("question", state.question);
+        status.put("allSteps", state.allSteps);
+        status.put("completedSteps", new ArrayList<>(state.completedSteps));
+        status.put("stoppedAtStep", state.stoppedAtStep);
+        status.put("completed", state.completed);
+        status.put("cancelled", state.cancelled.get());
+        if (state.completed && state.finalAnswer != null) {
+            status.put("answer", state.finalAnswer);
+        }
+        return status;
     }
 
     // ==================== 第一阶段：规划 ====================
@@ -169,7 +295,7 @@ public class PlanExecuteService {
      * 使用独立的 conversationId 隔离计划执行的对话记忆，避免污染主会话的 Redis 短期记忆
      * 后续步骤会携带前面步骤的执行结果作为上下文，实现步骤间的信息传递
      */
-    private List<StepResult> executeSteps(List<Step> plan, String originalQuery) {
+    private List<StepResult> executeSteps(List<Step> plan, String originalQuery, TaskState taskState) {
         List<StepResult> results = new ArrayList<>();
         StringBuilder contextBuilder = new StringBuilder();
 
@@ -184,6 +310,18 @@ public class PlanExecuteService {
         boolean truncated = plan.size() > MAX_EXECUTE_STEPS;
 
         for (int i = 0; i < executeLimit; i++) {
+            // 记录当前正在执行的步骤索引（供 stopTask 兜底推断 stoppedAtStep）
+            if (taskState != null) {
+                taskState.currentStepIndex = i;
+            }
+
+            // 检查是否被取消
+            if (taskState != null && taskState.cancelled.get()) {
+                log.info("任务已被取消，停止在步骤 [{}]", plan.get(i).getStepId());
+                taskState.stoppedAtStep = plan.get(i).getContent();
+                break;
+            }
+
             Step step = plan.get(i);
             log.info("执行步骤 [{}/{}] {}: {}", i + 1, executeLimit, step.getStepId(), step.getContent());
 
@@ -211,6 +349,11 @@ public class PlanExecuteService {
                 log.debug("步骤 [{}] 结果: {}", step.getStepId(), result);
 
                 results.add(new StepResult(step.getStepId(), step.getContent(), result, true));
+
+                // 记录已完成的步骤
+                if (taskState != null) {
+                    taskState.completedSteps.add(step.getContent());
+                }
 
                 // 累积执行上下文，供后续步骤参考
                 contextBuilder.append("步骤 ")
@@ -305,4 +448,22 @@ public class PlanExecuteService {
 
     /** 步骤执行结果 */
     public record StepResult(String stepId, String content, String result, boolean success) {}
+
+    /** 任务运行状态 */
+    public static class TaskState {
+        final String taskId;
+        final String question;
+        final AtomicBoolean cancelled = new AtomicBoolean(false);
+        volatile List<String> allSteps = new ArrayList<>();
+        volatile List<String> completedSteps = new ArrayList<>();
+        volatile String stoppedAtStep;
+        volatile boolean completed;
+        volatile String finalAnswer;
+        volatile int currentStepIndex;
+
+        public TaskState(String taskId, String question) {
+            this.taskId = taskId;
+            this.question = question;
+        }
+    }
 }
